@@ -4,24 +4,27 @@ const router = express.Router()
 
 const { User } = require('../class/User')
 const { Confirm } = require('../class/Confirm')
-const { Session } = require('../class/Sessions')
-const { Notification } = require('../class/Notification')
+const { Token } = require('../class/Token')
+const { Profile } = require('../class/Profile')
 
 const users = {
   user1: {
     email: 'user@mail.com',
     password: '123QWEqwe',
     isConfirm: true,
+    token: 'xwZnju]U]MRq:L3(a$zSDnoPOs?8C6',
   },
   user2: {
     email: 'admin@mail.com',
     password: '123QWEqwe',
     isConfirm: true,
+    token: 'dUPPVaR[t_jyjKfWn_ejqshOz;g:K_',
   },
   user3: {
     email: 'developer@mail.com',
     password: '123QWEqwe',
     isConfirm: true,
+    token: 'ovKtzq2*JIzjv$H}lD>Ng{m{iFzx(N',
   },
 }
 
@@ -29,16 +32,19 @@ User.create(
   users.user1.email,
   users.user1.password,
   users.user1.isConfirm,
+  users.user1.token,
 )
 User.create(
   users.user2.email,
   users.user2.password,
   users.user2.isConfirm,
+  users.user2.token,
 )
 User.create(
   users.user3.email,
   users.user3.password,
   users.user3.isConfirm,
+  users.user3.token,
 )
 
 router.post('/signup', function (req, res) {
@@ -61,17 +67,24 @@ router.post('/signup', function (req, res) {
 
     const isConfirm = false
 
-    const newUser = User.create(email, password, isConfirm)
+    const token = Token.getToken()
 
-    const session = Session.create(newUser)
+    const newUser = User.create(
+      email,
+      password,
+      isConfirm,
+      token,
+    )
 
-    Confirm.create(newUser.email)
+    Confirm.create(newUser.token)
 
-    const code = Confirm.getCode(email)
+    const code = Confirm.getCode(token)
+
+    console.log(code)
 
     return res.status(200).json({
       message: 'User registered successfully',
-      session,
+      token,
       code,
     })
   } catch (e) {
@@ -89,36 +102,28 @@ router.post('/signup-confirm', function (req, res) {
       message: 'Error: Required fields are missing',
     })
   }
-
   try {
-    const session = Session.getByToken(token)
-    if (!session) {
+    const userByToken = User.getByToken(token)
+    if (!userByToken) {
       return res.status(400).json({
         message: 'Error: You are not logged in',
       })
     }
+    const confirmCode = Confirm.getData(code.code)
 
-    const email = Confirm.getData(code)
-
-    if (!email) {
+    if (!confirmCode) {
       return res.status(400).json({
         message: 'Error: Code does not exist',
       })
     }
 
-    if (email !== session.user.email) {
-      return res.status(400).json({
-        message: 'Error: Code is invalid',
-      })
-    }
+    const user = User.getByToken(token)
 
-    const user = User.getByEmail(session.user.email)
     user.isConfirm = true
-    session.user.isConfirm = true
 
     return res.status(200).json({
       message: 'Email confirmed successfully',
-      session,
+      token,
     })
   } catch (err) {
     return res.status(400).json({
@@ -151,25 +156,23 @@ router.post('/signin', function (req, res) {
       })
     }
 
+    // const token = Token.getToken()
+
+    // user.token = token
+
+    const token = user.token
+
+    // console.log(token)
+
     if (!user.isConfirm) {
-      Confirm.create(user.email)
+      Confirm.create(user.token)
     }
 
-    const code = Confirm.getCode(email)
-
-    const session = Session.create(user)
-
-    Notification.newEvent(
-      Notification.status,
-      Notification.warning,
-      Notification.warning,
-      Notification.text,
-      email,
-    )
+    const code = Confirm.getCode(token)
 
     return res.status(200).json({
       message: 'You have logged in',
-      session,
+      token,
       code,
     })
   } catch (err) {
@@ -180,26 +183,26 @@ router.post('/signin', function (req, res) {
 })
 
 router.post('/recovery', function (req, res) {
-  const { email } = req.body
+  const { email, token } = req.body
 
-  if (!email) {
+  if (!email || !token) {
     return res.status(400).json({
       message: 'Error: Required fields are missing',
     })
   }
 
   try {
-    const user = User.getByEmail(email)
-    if (!user) {
+    const token = User.getByToken(token)
+    if (!token) {
       return res.status(400).json({
         message:
           'Error: A user with this email does not exist',
       })
     }
 
-    Confirm.create(email)
+    Confirm.create(token)
 
-    const code = Confirm.getCode(email)
+    const code = Confirm.getCode(token)
 
     return res.status(200).json({
       message: 'Password recovery code has been sent',
@@ -213,45 +216,34 @@ router.post('/recovery', function (req, res) {
 })
 
 router.post('/recovery-confirm', function (req, res) {
-  const { password, code } = req.body
+  const { password, code, token } = req.body
 
-  if (!code || !password) {
+  if (!code || !password || !token) {
     return res.status(400).json({
       message: 'Error: Required fields are missing',
     })
   }
 
   try {
-    const email = Confirm.getData(Number(code))
-    if (!email) {
+    const user = Confirm.getData(Number(code))
+    if (!user) {
       return res.status(400).json({
         message: 'Error: Code does not exist',
       })
     }
 
-    const user = User.getByEmail(email)
+    const token = User.getByToken(token)
 
-    if (!user) {
+    if (!token) {
       return res.status(400).json({
         message:
-          'Error: A user with this email does not exist',
+          'Error: A user with this token does not exist',
       })
     }
-    user.password = password
-
-    const session = Session.create(user)
-
-    Notification.newEvent(
-      Notification.status,
-      Notification.warning,
-      Notification.warning,
-      Notification.changePassword,
-      email,
-    )
+    token.password = password
 
     return res.status(200).json({
       message: 'Password successfully recovered',
-      session,
     })
   } catch (err) {
     return res.status(400).json({
@@ -261,7 +253,7 @@ router.post('/recovery-confirm', function (req, res) {
 })
 
 router.post('/recovery-email', function (req, res) {
-  const { email, password, newEmail } = req.body
+  const { token, password, newEmail } = req.body
 
   if (!password || !newEmail) {
     return res.status(400).json({
@@ -270,7 +262,7 @@ router.post('/recovery-email', function (req, res) {
   }
 
   try {
-    const user = User.getByEmail(email)
+    const user = User.getByToken(token)
 
     if (!user) {
       return res.status(400).json({
@@ -279,7 +271,7 @@ router.post('/recovery-email', function (req, res) {
       })
     }
 
-    if (user.password !== password) {
+    if (user.email !== email) {
       return res.status(400).json({
         message: 'Error: Incorrect password',
       })
@@ -288,19 +280,8 @@ router.post('/recovery-email', function (req, res) {
     user.email = newEmail
     user.isConfirm = true
 
-    const session = Session.create(user)
-
-    Notification.newEvent(
-      Notification.status,
-      Notification.warning,
-      Notification.warning,
-      Notification.changeEmail,
-      email,
-    )
-
     return res.status(200).json({
       message: 'Email changed successfully',
-      session,
     })
   } catch (err) {
     return res.status(400).json({
@@ -310,7 +291,7 @@ router.post('/recovery-email', function (req, res) {
 })
 
 router.post('/recovery-password', function (req, res) {
-  const { oldPassword, newPassword, email } = req.body
+  const { oldPassword, newPassword, token } = req.body
 
   if (!oldPassword || !newPassword) {
     return res.status(400).json({
@@ -319,7 +300,7 @@ router.post('/recovery-password', function (req, res) {
   }
 
   try {
-    const user = User.getByEmail(email)
+    const user = User.getByToken(token)
 
     if (!user) {
       return res.status(400).json({
@@ -334,15 +315,8 @@ router.post('/recovery-password', function (req, res) {
       })
     }
 
-    User.updatePassword(user, newPassword)
-
-    Notification.newEvent(
-      Notification.status,
-      Notification.warning,
-      Notification.warning,
-      Notification.changePassword,
-      email,
-    )
+    user.password = newPassword
+    user.isConfirm = true
 
     return res.status(200).json({
       message: 'Password successfully changed',
