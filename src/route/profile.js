@@ -1,8 +1,6 @@
 const express = require('express')
 const router = express.Router()
 
-const date = new Date().getTime()
-const getDate = require('../util/getDate')
 const profiles = require('../util/profiles')
 
 const { Profile } = require('../class/Profile')
@@ -98,30 +96,37 @@ router.get('/profile-info/:id', function (req, res) {
   }
 })
 
-router.get('/profile-list', function (req, res) {
+router.get('/search-profile', function (req, res) {
+  const { firstName, lastName, userName, stack } = req.query
   const token = req.headers['authorization']
-  if (!token) {
-    return res.status(400).json({
-      message:
-        'Error: All data must be provided to create a user',
-    })
-  }
-  try {
-    const profile = Profile.getByToken(token)
 
-    if (!profile) {
+  console.log(req.query)
+
+  try {
+    if (!token) {
       return res.status(400).json({
         message:
           'Error: All data must be provided to create a user',
       })
     }
-    console.log(getDate(date))
-    const profileList = Profile.getProfilesList(
-      profile,
-      profile.id,
-    )
 
-    return res.status(200).json(profileList)
+    const me = Profile.getByToken(token)
+    const profiles = Profile.getProfilesList(me, me.id)
+    let filteredList
+
+    if (!firstName && !lastName && !userName && !stack)
+      filteredList = profiles
+
+    const value = {
+      firstName: firstName,
+      lastName: lastName,
+      userName: userName,
+      stack: stack,
+    }
+    if (firstName || lastName || userName || stack)
+      filteredList = Profile.searchProfile(value, profiles)
+
+    return res.status(200).json(filteredList)
   } catch (e) {
     return res.status(400).json({
       message: err.message,
@@ -180,6 +185,82 @@ router.post('/upd-profile', function (req, res) {
   }
 })
 
+router.get('/search-followers/:id', function (req, res) {
+  const { firstName, lastName, userName, stack } = req.query
+  const profileId = req.params.id
+  const token = req.headers['authorization']
+
+  try {
+    if (!profileId && !token) {
+      return res.status(400).json({
+        message:
+          'Error: All data must be provided to create a user',
+      })
+    }
+
+    const me = Profile.getByToken(token)
+    const profile = Profile.getById(profileId)
+    const followers = Profile.getFollowersList(profile, me)
+    let filteredList
+
+    if (!firstName && !lastName && !userName && !stack)
+      filteredList = followers
+
+    const value = {
+      firstName: firstName,
+      lastName: lastName,
+      userName: userName,
+      stack: stack,
+    }
+    if (firstName || lastName || userName || stack)
+      filteredList = Profile.searchProfile(value, followers)
+
+    return res.status(200).json(filteredList)
+  } catch (e) {
+    return res.status(400).json({
+      message: err.message,
+    })
+  }
+})
+
+router.get('/search-following/:id', function (req, res) {
+  const { firstName, lastName, userName, stack } = req.query
+  const profileId = req.params.id
+  const token = req.headers['authorization']
+
+  try {
+    if (!profileId && !token) {
+      return res.status(400).json({
+        message:
+          'Error: All data must be provided to create a user',
+      })
+    }
+
+    const me = Profile.getByToken(token)
+    const profile = Profile.getById(profileId)
+    const following = Profile.getFollowingList(profile, me)
+    let filteredList
+
+    if (!firstName && !lastName && !userName && !stack)
+      filteredList = following
+
+    const value = {
+      firstName: firstName,
+      lastName: lastName,
+      userName: userName,
+      stack: stack,
+    }
+    if (firstName || lastName || userName || stack)
+      filteredList = Profile.searchProfile(value, following)
+
+    return res.status(200).json(filteredList)
+  } catch (e) {
+    return res.status(400).json({
+      message: err.message,
+    })
+  }
+})
+
 router.post('/profile-delete', function (req, res) {
   const token = req.headers['authorization']
 
@@ -208,65 +289,6 @@ router.post('/profile-delete', function (req, res) {
     Profile.deleteProfile(token)
 
     return res.status(200).json({})
-  } catch (e) {
-    return res.status(400).json({
-      message: err.message,
-    })
-  }
-})
-
-router.get('/followers-list/:id', function (req, res) {
-  const profileId = req.params.id
-  const token = req.headers['authorization']
-
-  if (!profileId && !token) {
-    return res.status(400).json({
-      message:
-        'Error: All data must be provided to create a user',
-    })
-  }
-  try {
-    const me = Profile.getByToken(token)
-    const profile = Profile.getById(profileId)
-    const followers = Profile.getFollowersList(profile, me)
-
-    return res.status(200).json(followers)
-  } catch (e) {
-    return res.status(400).json({
-      message: err.message,
-    })
-  }
-})
-
-router.get('/following-list/:id', function (req, res) {
-  const profileId = req.params.id
-  const token = req.headers['authorization']
-
-  if (!profileId && !token) {
-    return res.status(400).json({
-      message:
-        'Error: All data must be provided to create a user',
-    })
-  }
-  try {
-    const me = Profile.getByToken(token)
-    if (!me) {
-      return res.status(400).json({
-        message:
-          'Error: All data must be provided to create a user',
-      })
-    }
-    const profile = Profile.getById(profileId)
-    if (!profile) {
-      return res.status(400).json({
-        message:
-          'Error: All data must be provided to create a user',
-      })
-    }
-
-    const following = Profile.getFollowingList(profile, me)
-
-    return res.status(200).json(following)
   } catch (e) {
     return res.status(400).json({
       message: err.message,
@@ -327,6 +349,7 @@ router.post('/del-follower', function (req, res) {
       })
     }
     Profile.delFollower(profile, id)
+    Profile.delFollowing(profile, id)
 
     return res.status(200).json({})
   } catch (e) {
@@ -402,55 +425,7 @@ router.post('/comment-create', function (req, res) {
       comment.commentInfo,
     )
 
-    console.log(3)
-
     return res.status(200).json({})
-  } catch (e) {
-    return res.status(400).json({
-      message: err.message,
-    })
-  }
-})
-
-router.get('/test-followers/:id', function (req, res) {
-  const profileId = req.params.id
-  const token = req.headers['authorization']
-
-  if (!profileId) {
-    return res.status(400).json({
-      message:
-        'Error: All data must be provided to create a user',
-    })
-  }
-  try {
-    const me = Profile.getByToken(token)
-    const profile = Profile.getById(Number(profileId))
-    const followers = Profile.getFollowersList(profile, me)
-
-    return res.status(200).json({ profile, followers })
-  } catch (e) {
-    return res.status(400).json({
-      message: err.message,
-    })
-  }
-})
-
-router.get('/test-following/:id', function (req, res) {
-  const profileId = req.params.id
-  const token = req.headers['authorization']
-
-  if (!profileId) {
-    return res.status(400).json({
-      message:
-        'Error: All data must be provided to create a user',
-    })
-  }
-  try {
-    const me = Profile.getByToken(token)
-    const profile = Profile.getById(Number(profileId))
-    const following = Profile.getFollowingList(profile, me)
-
-    return res.status(200).json({ profile, following })
   } catch (e) {
     return res.status(400).json({
       message: err.message,
