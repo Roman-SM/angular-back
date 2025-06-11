@@ -45,13 +45,6 @@ class Profile {
       ) || null
     )
   }
-  static getByToken(token) {
-    return (
-      this.#profilesList.find(
-        (user) => user.token === token,
-      ) || null
-    )
-  }
   static deleteProfile(token) {
     const newArr = this.#profilesList.filter(
       (item) => item.token !== token,
@@ -79,6 +72,143 @@ class Profile {
         }
       })
     return profileList
+  }
+  static updProfileInfo(
+    profile,
+    firstName,
+    lastName,
+    description,
+    stack,
+  ) {
+    if (firstName !== '') {
+      if (profile.firstName !== firstName)
+        profile.firstName = firstName
+    }
+    if (lastName !== '') {
+      if (profile.lastName !== lastName)
+        profile.lastName = lastName
+    }
+    if (description !== '') {
+      if (profile.description !== description)
+        profile.description = description
+    }
+    if (stack !== '') {
+      console.log(stack)
+      const stackArr = profile.stack.join(',')
+      if (stackArr !== stack)
+        profile.stack = stack.split(',')
+    }
+  }
+  static searchProfile(value, followers) {
+    const filterList = []
+    console.log(value)
+    if (value.firstName !== '') {
+      const filteredProfiles = followers.filter((user) =>
+        user.firstName
+          .toLowerCase()
+          .includes(value.firstName.toLowerCase()),
+      )
+      filteredProfiles.forEach((profile) => {
+        const profileInfo = {
+          id: profile.id,
+          userName: profile.userName,
+          avatarUrl: profile.avatarUrl,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          stack: profile.stack,
+          isSubscribed: profile.isSubscribed,
+          description: profile.description,
+          followers: profile.followers,
+          following: profile.following,
+          postList: profile.postList,
+        }
+        filterList.push(profileInfo)
+      })
+      return filterList
+    }
+    if (value.lastName !== '') {
+      const filteredProfiles = followers.filter((user) =>
+        user.lastName
+          .toLowerCase()
+          .includes(value.lastName.toLowerCase()),
+      )
+      filteredProfiles.forEach((profile) => {
+        const profileInfo = {
+          id: profile.id,
+          userName: profile.userName,
+          avatarUrl: profile.avatarUrl,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          stack: profile.stack,
+          isSubscribed: profile.isSubscribed,
+          description: profile.description,
+          followers: profile.followers,
+          following: profile.following,
+          postList: profile.postList,
+        }
+        filterList.push(profileInfo)
+      })
+      return filterList
+    }
+    if (value.userName !== '') {
+      const filteredProfiles = followers.filter((user) =>
+        user.userName
+          .toLowerCase()
+          .includes(value.userName.toLowerCase()),
+      )
+      filteredProfiles.forEach((profile) => {
+        const profileInfo = {
+          id: profile.id,
+          userName: profile.userName,
+          avatarUrl: profile.avatarUrl,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          stack: profile.stack,
+          isSubscribed: profile.isSubscribed,
+          description: profile.description,
+          followers: profile.followers,
+          following: profile.following,
+          postList: profile.postList,
+        }
+        filterList.push(profileInfo)
+      })
+      return filterList
+    }
+    if (value.stack !== '') {
+      const filteredProfiles = followers.filter((user) =>
+        user.stack.some((s) =>
+          s
+            .toLowerCase()
+            .includes(value.stack.toLowerCase()),
+        ),
+      )
+      console.log(filteredProfiles)
+      filteredProfiles.forEach((profile) => {
+        const profileInfo = {
+          id: profile.id,
+          userName: profile.userName,
+          avatarUrl: profile.avatarUrl,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          stack: profile.stack,
+          isSubscribed: profile.isSubscribed,
+          description: profile.description,
+          followers: profile.followers,
+          following: profile.following,
+          postList: profile.postList,
+        }
+        filterList.push(profileInfo)
+      })
+      return filterList
+    }
+    return filterList
+  }
+  static getByToken(token) {
+    return (
+      this.#profilesList.find(
+        (user) => user.token === token,
+      ) || null
+    )
   }
   static addFollower = (profile, id) => {
     const profileId = profile.followers.find(
@@ -144,7 +274,7 @@ class Profile {
         firstName: profile.firstName,
         lastName: profile.lastName,
         stack: profile.stack,
-        isSubscribed,
+        isSubscribed: isSubscribed,
         description: profile.description,
         followers: profile.followers,
         following: profile.following,
@@ -153,32 +283,6 @@ class Profile {
       followingList.push(profileInfo)
     }
     return followingList
-  }
-  static updProfileInfo(
-    profile,
-    firstName,
-    lastName,
-    description,
-    stack,
-  ) {
-    if (firstName !== '') {
-      if (profile.firstName !== firstName)
-        profile.firstName = firstName
-    }
-    if (lastName !== '') {
-      if (profile.lastName !== lastName)
-        profile.lastName = lastName
-    }
-    if (description !== '') {
-      if (profile.description !== description)
-        profile.description = description
-    }
-    if (stack !== '') {
-      console.log(stack)
-      const stackArr = profile.stack.join(',')
-      if (stackArr !== stack)
-        profile.stack = stack.split(',')
-    }
   }
   static postCreate(profile, post) {
     const id = profile.postList.length
