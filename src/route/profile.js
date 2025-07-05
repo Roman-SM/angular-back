@@ -4,7 +4,6 @@ const router = express.Router()
 const profiles = require('../util/profiles')
 
 const { Profile } = require('../class/Profile')
-const { User } = require('../class/User')
 
 profiles.forEach((profile) => Profile.create(profile))
 
@@ -18,22 +17,17 @@ router.get('/profile-info', function (req, res) {
     })
   }
   try {
-    const user = User.getByToken(token)
-
-    if (!user) {
-      return res.status(400).json({
-        message:
-          'Error: A user with this email does not exist',
-      })
-    }
-
     const profile = Profile.getByToken(token)
+
+    console.log(profile)
+
     if (!profile) {
       return res.status(400).json({
         message:
           'Error: A user with this email does not exist',
       })
     }
+
     const followers = Profile.getFollowersList(
       profile,
       profile,
@@ -43,17 +37,9 @@ router.get('/profile-info', function (req, res) {
       profile,
     )
 
-    const followerId = profile.followers
-    const followingId = profile.following
-
-    profile.followers = followers
-    profile.following = following
-    setTimeout(() => {
-      profile.followers = followerId
-      profile.following = followingId
-    }, 5)
-
-    return res.status(200).json(profile)
+    return res
+      .status(200)
+      .json({ profile, followers, following })
   } catch (e) {
     return res.status(400).json({
       message: err.message,
@@ -74,21 +60,13 @@ router.get('/profile-info/:id', function (req, res) {
   try {
     const me = Profile.getByToken(token)
     const profile = Profile.getById(Number(profileId))
+    console.log(profile)
     const followers = Profile.getFollowersList(profile, me)
     const following = Profile.getFollowingList(profile, me)
 
-    const followerId = profile.followers
-    const followingId = profile.following
-
-    profile.followers = followers
-    profile.following = following
-
-    setTimeout(() => {
-      profile.followers = followerId
-      profile.following = followingId
-    }, 5)
-
-    return res.status(200).json(profile)
+    return res
+      .status(200)
+      .json({ profile, followers, following })
   } catch (e) {
     return res.status(400).json({
       message: err.message,
@@ -99,8 +77,6 @@ router.get('/profile-info/:id', function (req, res) {
 router.get('/search-profile', function (req, res) {
   const { firstName, lastName, userName, stack } = req.query
   const token = req.headers['authorization']
-
-  console.log(req.query)
 
   try {
     if (!token) {
@@ -162,20 +138,6 @@ router.post('/upd-profile', function (req, res) {
       description,
       stack,
     )
-
-    const followers = Profile.getFollowersList(profile)
-    const following = Profile.getFollowingList(profile)
-
-    const followerId = profile.followers
-    const followingId = profile.following
-
-    profile.followers = followers
-    profile.following = following
-
-    setTimeout(() => {
-      profile.followers = followerId
-      profile.following = followingId
-    }, 5)
 
     return res.status(200).json(profile)
   } catch (e) {
@@ -271,13 +233,6 @@ router.post('/profile-delete', function (req, res) {
     })
   }
   try {
-    const user = User.getByToken(token)
-    if (!user) {
-      return res.status(400).json({
-        message:
-          'Error: A user with this email does not exist',
-      })
-    }
     const profile = Profile.getByToken(token)
     if (!profile) {
       return res.status(400).json({
@@ -285,7 +240,6 @@ router.post('/profile-delete', function (req, res) {
           'Error: A user with this email does not exist',
       })
     }
-    User.deleteUser(token)
     Profile.deleteProfile(token)
 
     return res.status(200).json({})

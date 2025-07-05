@@ -2,53 +2,13 @@
 const express = require('express')
 const router = express.Router()
 
-const { User } = require('../class/User')
 const { Confirm } = require('../class/Confirm')
 const { Token } = require('../class/Token')
 const { Profile } = require('../class/Profile')
 
-const users = {
-  user1: {
-    email: 'user@mail.com',
-    password: '123QWEqwe',
-    isConfirm: true,
-    token: 'xwZnju]U]MRq:L3(a$zSDnoPOs?8C6',
-  },
-  user2: {
-    email: 'admin@mail.com',
-    password: '123QWEqwe',
-    isConfirm: true,
-    token: 'dUPPVaR[t_jyjKfWn_ejqshOz;g:K_',
-  },
-  user3: {
-    email: 'developer@mail.com',
-    password: '123QWEqwe',
-    isConfirm: true,
-    token: 'ovKtzq2*JIzjv$H}lD>Ng{m{iFzx(N',
-  },
-}
-
-User.create(
-  users.user1.email,
-  users.user1.password,
-  users.user1.isConfirm,
-  users.user1.token,
-)
-User.create(
-  users.user2.email,
-  users.user2.password,
-  users.user2.isConfirm,
-  users.user2.token,
-)
-User.create(
-  users.user3.email,
-  users.user3.password,
-  users.user3.isConfirm,
-  users.user3.token,
-)
-
-router.post('/signup', function (req, res) {
+router.post('/sign-up', function (req, res) {
   const { email, password } = req.body
+
   if (!email || !password) {
     return res.status(400).json({
       message:
@@ -57,7 +17,7 @@ router.post('/signup', function (req, res) {
   }
 
   try {
-    const user = User.getByEmail(email)
+    const user = Profile.getByEmail(email)
     if (user) {
       return res.status(400).json({
         message:
@@ -65,22 +25,31 @@ router.post('/signup', function (req, res) {
       })
     }
 
-    const isConfirm = false
-
     const token = Token.getToken()
 
-    const newUser = User.create(
-      email,
-      password,
-      isConfirm,
-      token,
-    )
+    const profileInfo = {
+      id: Profile.getList().length + 1,
+      email: email,
+      password: password,
+      isConfirm: false,
+      token: token,
+      userName: email.split('@')[0],
+      avatarUrl: 'assets/images/svg/avatar-playsholder.svg',
+      firstName: '',
+      lastName: '',
+      stack: [],
+      city: '',
+      isSubscribed: false,
+      description: '',
+      followers: [],
+      following: [],
+      postList: [],
+    }
+    const newUser = Profile.create(profileInfo)
 
     Confirm.create(newUser.token)
 
     const code = Confirm.getCode(token)
-
-    console.log(code)
 
     return res.status(200).json({
       message: 'User registered successfully',
@@ -94,7 +63,7 @@ router.post('/signup', function (req, res) {
   }
 })
 
-router.post('/signup-confirm', function (req, res) {
+router.post('/sign-up-confirm', function (req, res) {
   const { code, token } = req.body
 
   if (!code || !token) {
@@ -103,7 +72,7 @@ router.post('/signup-confirm', function (req, res) {
     })
   }
   try {
-    const userByToken = User.getByToken(token)
+    const userByToken = Profile.getByToken(token)
     if (!userByToken) {
       return res.status(400).json({
         message: 'Error: You are not logged in',
@@ -117,7 +86,7 @@ router.post('/signup-confirm', function (req, res) {
       })
     }
 
-    const user = User.getByToken(token)
+    const user = Profile.getByToken(token)
 
     user.isConfirm = true
 
@@ -132,9 +101,8 @@ router.post('/signup-confirm', function (req, res) {
   }
 })
 
-router.post('/signin', function (req, res) {
+router.post('/sign-in', function (req, res) {
   const { email, password } = req.body
-
   if (!email || !password) {
     return res.status(400).json({
       message: 'Error: Required fields are missing',
@@ -142,7 +110,7 @@ router.post('/signin', function (req, res) {
   }
 
   try {
-    const user = User.getByEmail(email)
+    const user = Profile.getByEmail(email)
     if (!user) {
       return res.status(400).json({
         message:
@@ -156,17 +124,11 @@ router.post('/signin', function (req, res) {
       })
     }
 
-    // const token = Token.getToken()
-
-    // user.token = token
-
-    const token = user.token
-
-    // console.log(token)
-
     if (!user.isConfirm) {
       Confirm.create(user.token)
     }
+
+    const token = user.token
 
     const code = Confirm.getCode(token)
 
@@ -192,7 +154,7 @@ router.post('/recovery', function (req, res) {
   }
 
   try {
-    const token = User.getByToken(token)
+    const token = Profile.getByToken(token)
     if (!token) {
       return res.status(400).json({
         message:
@@ -232,7 +194,7 @@ router.post('/recovery-confirm', function (req, res) {
       })
     }
 
-    const token = User.getByToken(token)
+    const token = Profile.getByToken(token)
 
     if (!token) {
       return res.status(400).json({
@@ -244,82 +206,6 @@ router.post('/recovery-confirm', function (req, res) {
 
     return res.status(200).json({
       message: 'Password successfully recovered',
-    })
-  } catch (err) {
-    return res.status(400).json({
-      message: err.message,
-    })
-  }
-})
-
-router.post('/recovery-email', function (req, res) {
-  const { token, password, newEmail } = req.body
-
-  if (!password || !newEmail) {
-    return res.status(400).json({
-      message: 'Error: Required fields are missing',
-    })
-  }
-
-  try {
-    const user = User.getByToken(token)
-
-    if (!user) {
-      return res.status(400).json({
-        message:
-          'Error: A user with this email does not exist',
-      })
-    }
-
-    if (user.email !== email) {
-      return res.status(400).json({
-        message: 'Error: Incorrect password',
-      })
-    }
-
-    user.email = newEmail
-    user.isConfirm = true
-
-    return res.status(200).json({
-      message: 'Email changed successfully',
-    })
-  } catch (err) {
-    return res.status(400).json({
-      message: err.message,
-    })
-  }
-})
-
-router.post('/recovery-password', function (req, res) {
-  const { oldPassword, newPassword, token } = req.body
-
-  if (!oldPassword || !newPassword) {
-    return res.status(400).json({
-      message: 'Error: Required fields are missing',
-    })
-  }
-
-  try {
-    const user = User.getByToken(token)
-
-    if (!user) {
-      return res.status(400).json({
-        message:
-          'Error: A user with this email does not exist',
-      })
-    }
-
-    if (user.password !== oldPassword) {
-      return res.status(400).json({
-        message: 'Error: Incorrect password',
-      })
-    }
-
-    user.password = newPassword
-    user.isConfirm = true
-
-    return res.status(200).json({
-      message: 'Password successfully changed',
     })
   } catch (err) {
     return res.status(400).json({
