@@ -1,6 +1,5 @@
 class Confirm {
   static #list = []
-  static code = 4523
 
   constructor(data) {
     this.code = Confirm.generateCode()
@@ -11,7 +10,6 @@ class Confirm {
 
   static create = (data) => {
     this.#list.push(new Confirm(data))
-
     setTimeout(() => {
       this.delete(code)
     }, 24 * 60 * 60 * 1000)

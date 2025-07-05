@@ -1,14 +1,16 @@
 const getDate = require('../util/getDate')
 
 class Profile {
-  static #count = 1
+  static count = 1
   static #profilesList = []
   static #date = new Date().getTime()
 
   constructor(
+    email,
+    password,
+    isConfirm,
     token,
     subscriptionsAmount,
-    isActive,
     description,
     username,
     avatarUrl,
@@ -19,10 +21,11 @@ class Profile {
     followers,
     following,
   ) {
-    this.id = Profile.#count++
+    this.email = email.toString().toLowerCase()
+    this.password = password
+    this.isConfirm = isConfirm || false
     this.token = token
     this.subscriptionsAmount = subscriptionsAmount
-    this.isActive = isActive
     this.description = description
     this.username = username
     this.avatarUrl = avatarUrl
@@ -34,16 +37,29 @@ class Profile {
     this.following = following
   }
 
-  static create(profile) {
-    this.#profilesList.push(profile)
-    return profile
+  static create(profileInfo) {
+    this.#profilesList.push(profileInfo)
+    return profileInfo
   }
   static getById(id) {
-    return (
+    const profile =
       this.#profilesList.find(
         (user) => user.id === Number(id),
       ) || null
-    )
+    const profileInfo = {
+      id: profile.id,
+      userName: profile.userName,
+      avatarUrl: profile.avatarUrl,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      stack: profile.stack,
+      isSubscribed: profile.isSubscribed,
+      description: profile.description,
+      followers: profile.followers,
+      following: profile.following,
+      postList: profile.postList,
+    }
+    return profileInfo
   }
   static deleteProfile(token) {
     const newArr = this.#profilesList.filter(
@@ -93,7 +109,6 @@ class Profile {
         profile.description = description
     }
     if (stack !== '') {
-      console.log(stack)
       const stackArr = profile.stack.join(',')
       if (stackArr !== stack)
         profile.stack = stack.split(',')
@@ -101,7 +116,6 @@ class Profile {
   }
   static searchProfile(value, followers) {
     const filterList = []
-    console.log(value)
     if (value.firstName !== '') {
       const filteredProfiles = followers.filter((user) =>
         user.firstName
@@ -182,7 +196,6 @@ class Profile {
             .includes(value.stack.toLowerCase()),
         ),
       )
-      console.log(filteredProfiles)
       filteredProfiles.forEach((profile) => {
         const profileInfo = {
           id: profile.id,
@@ -207,6 +220,14 @@ class Profile {
     return (
       this.#profilesList.find(
         (user) => user.token === token,
+      ) || null
+    )
+  }
+  static getByEmail(email) {
+    return (
+      this.#profilesList.find(
+        (user) =>
+          user.email === email.toString().toLowerCase(),
       ) || null
     )
   }
@@ -313,6 +334,9 @@ class Profile {
     return profile.postList[postId - 1].comment.push(
       commentCreate,
     )
+  }
+  static getList() {
+    return this.#profilesList
   }
 }
 
